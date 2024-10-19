@@ -9,7 +9,8 @@ import {PoolKey} from "v4-core/src/types/PoolKey.sol";
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
 import {BalanceDelta, BalanceDeltaLibrary} from "v4-core/src/types/BalanceDelta.sol";
 import {BeforeSwapDelta, BeforeSwapDeltaLibrary} from "v4-core/src/types/BeforeSwapDelta.sol";
-import {TaskData} from "./types.sol";
+import {TaskData} from "./types/TaskData.sol";
+import {PairVolume} from "./types/PairVolume.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
