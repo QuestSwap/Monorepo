@@ -60,6 +60,12 @@ contract QuestHook is BaseHook, Ownable {
             (block.timestamp >= task.startTime && block.timestamp <= task.endTime);
     }
 
+    function _completeTask(address particant, TaskData task) {
+        activeTask.particantsNumber += 1;
+        (bool sent, bytes memory data) = _to.call{value: msg.value}("");
+        require(sent, "Failed to send Ether");
+    }
+
     function afterSwap(
         address sender,
         PoolKey calldata key,
@@ -85,9 +91,9 @@ contract QuestHook is BaseHook, Ownable {
 
             if (
                 tasksSwapVolume[activeTask][sender] >= activeTask.expectedVolume && 
-                tasksSwapCount[activeTask][sender] >= activeTask.
+                tasksSwapCount[activeTask][sender] >= activeTask.expectedTxs
             ) {
-                activeTask.particantsNumber += 1;
+                
             }
         }
 
