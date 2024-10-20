@@ -10,9 +10,7 @@ struct TaskDataArguments {
     uint256 expectedTxs;
     uint256 startTime;
     uint256 endTime;
-    bool isCompleted;
     uint16 maxParticantsNumber;
-    uint16 particantsNumber;
 }
 
 struct TaskData {

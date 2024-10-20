@@ -1,7 +1,7 @@
 import {PoolId, PoolIdLibrary} from "v4-core/src/types/PoolId.sol";
-import {TaskData} from "../types/TaskData";
+import {TaskData, TaskDataArguments} from "../types/TaskData";
 
 interface ITaskManager {
-    function createTask(PoolId poolId, TaskData taskData) external;
-    function getTask(PoolId poolId) view returns (bool, TaskData);
+    function createTask(PoolId poolId, TaskDataArguments calldata taskData) external returns(TaskData memory);
+    function getTask(PoolId poolId) public view returns (bool, TaskData memory);
 }

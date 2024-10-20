@@ -14,7 +14,7 @@ import {PairVolume} from "../types/PairVolume.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract QuestHook is BaseHook, Ownable {
+contract QuestHook is BaseHook {
     using PoolIdLibrary for PoolKey;
     using BalanceDeltaLibrary for BalanceDelta;
 
@@ -29,10 +29,66 @@ contract QuestHook is BaseHook, Ownable {
     mapping(uint32 taskId => address[] eligibleUsers) private taskEligibleUsers;
 
     uint32 public lastTaskId = 0;
+    mapping(PoolId => address owner) public ownerByPool; 
 
-    constructor(IPoolManager _poolManager, address initialOwner) BaseHook(_poolManager) Ownable(initialOwner) {}
+    constructor(IPoolManager _poolManager) BaseHook(_poolManager) {}
 
-    function createTask(PoolId poolId, TaskDataArguments calldata taskData) external {
+    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
+        return Hooks.Permissions({
+            beforeInitialize: false,
+            afterInitialize: true,
+            beforeAddLiquidity: false,
+            afterAddLiquidity: false,
+            beforeRemoveLiquidity: false,
+            afterRemoveLiquidity: false,
+            beforeSwap: false,
+            afterSwap: true,
+            beforeDonate: false,
+            afterDonate: false,
+            beforeSwapReturnDelta: false,
+            afterSwapReturnDelta: true,
+            afterAddLiquidityReturnDelta: false,
+            afterRemoveLiquidityReturnDelta: false
+        });
+    }
+
+    function afterInitialize(
+        address sender,
+        PoolKey calldata key,
+        uint160,
+        int24,
+        bytes calldata
+    ) external override returns (bytes4) {
+        ownerByPool[key.toId()] = sender;
+        return BaseHook.afterInitialize.selector;
+    }
+
+    function getTotalVolume(PoolId poolId, address user) public view returns (uin256) {
+        return totalVolume[poolId][user];
+    }
+
+    function getTotalSwapsCount(PoolId poolId, address user) public view returns (uin256) {
+        return swapsCount[poolId][user];
+    }
+
+    function getTaskTotalVolume(uint32 taskId, address user) public view returns (uin256) {
+        return tasksSwapVolume[poolId][user];
+    }
+
+    function getTaskSwapsCount(uint32 taskId, address user) public view returns (uin256) {
+        return tasksSwapCount[poolId][user];
+    }
+
+    modifier onlyPoolOwner(PoolId poolId, address sender) {
+        require(ownerByPool[poolId] == sender);
+        _;
+    }
+
+    function createTask(
+        PoolId poolId,
+        TaskDataArguments calldata taskData
+    ) external returns (TaskData memory) only
+    PoolOwner(poolId, msg.sender) {
         lastTaskId += 1;
         TaskData memory newTaskData = TaskData({
             taskId: lastTaskId,
@@ -42,12 +98,13 @@ contract QuestHook is BaseHook, Ownable {
             expectedTxs: taskData.expectedTxs,
             startTime: taskData.startTime,
             endTime: taskData.endTime,
-            isCompleted: taskData.isCompleted,
+            isCompleted: false,
             maxParticantsNumber: taskData.maxParticantsNumber,
-            particantsNumber: taskData.particantsNumber
+            particantsNumber: 0
         });
 
         poolTask[poolId] = newTaskData;
+        return newTaskData;
     }
 
     function getTask(PoolId poolId) public view returns (bool, TaskData memory) {
@@ -55,31 +112,12 @@ contract QuestHook is BaseHook, Ownable {
         return (task.taskId != 0, task);
     }
 
-    function getHookPermissions() public pure override returns (Hooks.Permissions memory) {
-        return Hooks.Permissions({
-            beforeInitialize: false,
-            afterInitialize: false,
-            beforeAddLiquidity: false,
-            afterAddLiquidity: true,
-            beforeRemoveLiquidity: false,
-            afterRemoveLiquidity: true,
-            beforeSwap: false,
-            afterSwap: true,
-            beforeDonate: false,
-            afterDonate: false,
-            beforeSwapReturnDelta: false,
-            afterSwapReturnDelta: true,
-            afterAddLiquidityReturnDelta: false,
-            afterRemoveLiquidityReturnDelta: true
-        });
-    }
-
     function abs(int x) private pure returns (int) {
         return x >= 0 ? x : -x;
     }
 
     function isValidTask(TaskData memory task) private view returns (bool) {
-        return !task.isCompleted || task.particantsNumber <= task.maxParticantsNumber || 
+        return !task.isCompleted || task.particantsNumber < task.maxParticantsNumber || 
             (block.timestamp >= task.startTime && block.timestamp <= task.endTime);
     }
 
@@ -126,6 +164,7 @@ contract QuestHook is BaseHook, Ownable {
                 isCompletedTask(activeTask, sender)
             ) {
                 activeTask.particantsNumber += 1;
+                activeTask.isCompleted = true;
                 _completeTask(payable(sender), activeTask.rewardAmount);
             }
         }
